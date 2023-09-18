@@ -35,22 +35,12 @@ func NewBasicCRUD(p ...string) BasicCRUD {
 		port = p[0]
 	}
 
-	errLogFile, err := os.Create("BasicCRUD-error.log")
-	if err != nil {
-		fmt.Println("Error creating error.log file:", err)
-		os.Exit(1)
-	}
-	defer errLogFile.Close()
-
-	errLogger := log.New(errLogFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// Set the logger for the standard log package to log to both stdout and error.log
-
 	b := BasicCRUD{
 		Routes: routes,
 		Port:   port,
 	}
 
-	b.SetLog("error", errLogger)
+	b.CreateLog()
 
 	return b
 }
@@ -62,7 +52,30 @@ func (b *BasicCRUD) updateLogOutput() {
 	}
 	log.SetOutput(io.MultiWriter(logsSlice...))
 }
+func (b *BasicCRUD) CreateLog(key string, logArgs ...string) {
+	var (
+		location   string
+		prefix     string
+		newLogFile = log
+	)
 
+	if len(logArgs) > 0 {
+		location = item[0]
+		newLogFile, err := os.Create(location)
+		defer newLogFile.Close()
+		if err != nil {
+			fmt.Println("Error creating error.log file:", err)
+			os.Exit(1)
+		}
+	}
+
+	if len(logArgs) > 1 {
+
+	}
+	errLogger := log.New(newLogFile, prefix, log.Ldate|log.Ltime|log.Lshortfile)
+	b.SetLog("error", errLogger)
+
+}
 func (b *BasicCRUD) SetLog(key string, val *log.Logger) {
 	b.Logs[key] = val
 	b.updateLogOutput()

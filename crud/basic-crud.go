@@ -2,10 +2,13 @@ package crud
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+
+	"golang.org/x/exp/maps"
 )
 
 type Item struct {
@@ -15,38 +18,62 @@ type Item struct {
 }
 
 type RouteMap map[string]func(http.ResponseWriter, *http.Request)
-
+type LogMap map[string]*log.Logger
 type BasicCRUD struct {
 	Routes RouteMap
 	Port   string
 	Items  []Item
+	Logs   LogMap
 }
 
 func NewBasicCRUD(p ...string) BasicCRUD {
-	port := "8088"
+	var (
+		port   = "8088"
+		routes = RouteMap{}
+	)
 	if len(p) > 0 {
 		port = p[0]
 	}
 
-	routes := RouteMap{}
-
-	return BasicCRUD{
-		Routes: routes,
-		Port:   port,
-	}
-}
-
-func (b BasicCRUD) Serve() {
 	errLogFile, err := os.Create("BasicCRUD-error.log")
 	if err != nil {
-		log.Fatalln("Error creating error.log file:", err)
+		fmt.Println("Error creating error.log file:", err)
+		os.Exit(1)
 	}
 	defer errLogFile.Close()
 
 	errLogger := log.New(errLogFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
-
 	// Set the logger for the standard log package to log to both stdout and error.log
-	log.SetOutput(io.MultiWriter(os.Stdout, errLogFile))
+
+	b := BasicCRUD{
+		Routes: routes,
+		Port:   port,
+	}
+
+	b.SetLog("error", errLogger)
+
+	return b
+}
+
+func (b *BasicCRUD) updateLogOutput() {
+	logsSlice := []io.Writer{os.Stdout}
+	for _, v := range b.Logs {
+		logsSlice = append(logsSlice, v.Writer())
+	}
+	log.SetOutput(io.MultiWriter(logsSlice...))
+}
+
+func (b *BasicCRUD) SetLog(key string, val *log.Logger) {
+	b.Logs[key] = val
+	b.updateLogOutput()
+}
+
+func (b *BasicCRUD) UpdateLogs(l LogMap) {
+	maps.Copy(b.Logs, l)
+	b.updateLogOutput()
+}
+
+func (b BasicCRUD) Serve() {
 
 	for route, handler := range b.Routes {
 		http.HandleFunc(route, handler)
@@ -54,7 +81,7 @@ func (b BasicCRUD) Serve() {
 
 	// Start the HTTP server on port 8080
 	if err := http.ListenAndServe(":"+b.Port, nil); err != nil {
-		errLogger.Println(err)
+		b.Logs["error"].Fatalln(err)
 	}
 }
 
@@ -69,15 +96,16 @@ func (b *BasicCRUD) GetItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *BasicCRUD) HandleItem(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
 		b.GetItem(w, r)
-	} else if r.Method == http.MethodPost {
+	case r.Method:
 		b.CreateItem(w, r)
-	} else if r.Method == http.MethodPut {
+	case http.MethodPut:
 		b.UpdateItem(w, r)
-	} else if r.Method == http.MethodDelete {
+	case http.MethodDelete:
 		b.DeleteItem(w, r)
-	} else {
+	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }

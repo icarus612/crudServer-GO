@@ -52,15 +52,16 @@ func (b *BasicCRUD) updateLogOutput() {
 	}
 	log.SetOutput(io.MultiWriter(logsSlice...))
 }
+
 func (b *BasicCRUD) CreateLog(key string, logArgs ...string) {
 	var (
 		location   string
 		prefix     string
-		newLogFile = log
+		newLogFile os.File
 	)
 
 	if len(logArgs) > 0 {
-		location = item[0]
+		location = logArgs[0]
 		newLogFile, err := os.Create(location)
 		defer newLogFile.Close()
 		if err != nil {

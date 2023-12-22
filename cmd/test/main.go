@@ -1,11 +1,9 @@
 package main
 
-import (
-	"server/crud"
-)
+import basic "github.com/icarus612/crudServer-lib-GO/basic"
 
 func main() {
 
-	b := crud.NewBasicCRUD()
+	b := basic.NewBasicCRUD()
 	b.Serve()
 }

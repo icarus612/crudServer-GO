@@ -7,8 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-
-	"golang.org/x/exp/maps"
+	"maps"
 )
 
 type Item struct {
